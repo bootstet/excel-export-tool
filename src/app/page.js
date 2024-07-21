@@ -7,13 +7,13 @@ import axios from 'axios'
 
 export default function Home() {
   // 获取SKC值
-  const findStringAndNextWord = (text, searchString) => {
-    const regex = new RegExp(`${searchString}\\s(\\w+)`);
-    const match = text.match(regex);
-    if (match) {
-        return match[1]; // 返回第一个括号中匹配的单词
+  const findStringAndNextWord = (str, target) => {
+    if (!str) {
+      return null
     }
-    return null; // 如果没有匹配，返回null
+    const regex = new RegExp(target + '(\\d+)');
+    const match = str.match(regex);
+    return match ? match[1] : null;
   }
    
    // 上传文件并解析成json
@@ -41,12 +41,31 @@ export default function Home() {
         for (const sheet in workbook.Sheets) {
           if (workbook.Sheets.hasOwnProperty(sheet)) {
             // 将获取到表中的数据转化为json格式
+            console.log('XLSX.utils.sheet_to_json(workbook.Sheets[sheet])', XLSX.utils.sheet_to_json(workbook.Sheets[sheet]))
             data = data.concat(XLSX.utils.sheet_to_json(workbook.Sheets[sheet]));
           }
         }
         console.log('原始表格数据', data)
-
-      
+        
+        // 表格数据处理 将表格数据转换为 { 商品信息: 'xxx', 数量: 78, .... }
+        const keyObject = {
+          '__EMPTY': "商品信息",
+          '__EMPTY_1': "商品信息",
+          '__EMPTY_2': "属性集",
+          '__EMPTY_3': "SKU ID",
+          '__EMPTY_5': "数量",
+          '数量': "数量",
+          'SKU ID': "SKU ID"
+        }
+        
+        data = data.map(item => {
+          const transResult = Object.keys(item).reduce((acc, cur) => {
+            acc[keyObject[cur]]= item[cur]
+            return acc
+          }, {})
+          console.log('transResult', transResult)
+          return transResult
+        })
 
         if (data && data.length < 1) {
           message.error('表格中没有数据,请重新上传');
@@ -54,11 +73,13 @@ export default function Home() {
         }
         if (data && data.length > 0) {
           const result = data.reduce((acc, cur) => {
-            const key = findStringAndNextWord(cur['商品信息'], 'SKC:')
-            acc[key] = cur['数量']
+            const key = findStringAndNextWord(cur['商品信息'], 'SKC：')
+            if (key) {
+              acc[key] = cur['数量']
+            }
             return acc
           }, {})
-          console.log('result', result)
+
           info.onProgress({ percent: 100 }, info.file);
           info.onSuccess(info.res, info.file);
           axios.get('http://localhost:3001/getData', {
