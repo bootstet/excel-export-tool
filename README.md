@@ -13,6 +13,9 @@ pnpm dev
 # or
 bun dev
 ```
+##
+
+一键导入表格，根据表格中的商品信息，去文件夹里查找商品信息相关的图片并打包生成zip文件返回
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
