@@ -1,11 +1,22 @@
 'use client';
+import { useState } from 'react';
 import Image from "next/image";
-import { Upload, Button, message } from 'antd';
+import { Upload, Button, message, Modal, Form, Input } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import axios from 'axios'
 
 export default function Home() {
+  const [form] = Form.useForm();
+  const [flowerName, setFlowerName] = useState('');
+  const [goodsName, setGoodsName] = useState('');
+  
+  const filedChange = (changedValues, allValues) => {
+    const { flowerName, goodsName } = allValues;
+    setFlowerName(flowerName);
+    setGoodsName(goodsName);
+  }
+  
   // 获取SKC值
   const findStringAndNextWord = (str, target) => {
     if (!str) {
@@ -14,6 +25,16 @@ export default function Home() {
     const regex = new RegExp(target + '(\\d+)');
     const match = str.match(regex);
     return match ? match[1] : null;
+  }
+
+  const downFile = (file, name) => {
+    let blob = new Blob([file], { type: "application/zip" })
+    let url = window.URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = name // 重命名文件
+    link.click()
+    URL.revokeObjectURL(url) // 释放内存
   }
    
    // 上传文件并解析成json
@@ -63,7 +84,7 @@ export default function Home() {
             acc[keyObject[cur]]= item[cur]
             return acc
           }, {})
-          console.log('transResult', transResult)
+          // console.log('transResult', transResult)
           return transResult
         })
 
@@ -79,7 +100,7 @@ export default function Home() {
             }
             return acc
           }, {})
-
+          console.log('result', Object.keys(result))
           info.onProgress({ percent: 100 }, info.file);
           info.onSuccess(info.res, info.file);
           axios.get('http://localhost:3001/getData', {
@@ -91,13 +112,15 @@ export default function Home() {
           })
           .then(function (response) {
             console.log(response);
-            let blob = new Blob([response.data], { type: "application/zip" })
-            let url = window.URL.createObjectURL(blob)
-            const link = document.createElement("a")
-            link.href = url
-            link.download = '下单商品图片及数量.zip' // 重命名文件
-            link.click()
-            URL.revokeObjectURL(url) // 释放内存
+            if (response.status === 200) {
+              if (response.data.type === 'application/zip') {
+                downFile(response.data, flowerName)
+                
+              }
+            } else {
+              message.error('文件下载失败');
+            }
+            
           })
           .catch(function (error) {
             console.log(error);
@@ -105,6 +128,56 @@ export default function Home() {
           .finally(function () {
             // always executed
           });
+
+          axios.get('http://localhost:3001/getGoodsData', {
+            params: result,
+            responseType: 'blob',
+            headers: {
+              responseType: 'blob'
+            }
+          })
+          .then(function (response) {
+            console.log(response);
+            if (response.status === 200) {
+              if (response.data.type === 'application/zip') {
+                downFile(response.data, goodsName)
+              }
+            } else {
+              message.error('文件下载失败');
+            }
+            
+          })
+          .catch(function (error) {
+            console.log(error);
+          })
+          .finally(function () {
+            // always executed
+          });
+
+
+          axios.get('http://localhost:3001/getNoExistData', {
+            params: result,
+            headers: {
+            }
+          })
+          .then(function (response) {
+            console.log(response);
+            if (response.status === 200) {
+              console.log('response.data', response.data.data)
+              const data = Object.keys(response.data.data).join(',')
+              console.log('data', data)
+              Modal.info({
+                title: '不存在的图片skc有：',
+                content: data
+              })
+            } else {
+              message.error('文件下载失败');
+            }
+            
+          })
+          .catch(function (error) {
+            console.log(error);
+          })
         }
       } catch (e) {
         console.error('e', e)
@@ -119,6 +192,7 @@ export default function Home() {
     headers: {
       authorization: 'authorization-text',
     },
+    maxCount: 1,
     onChange(info) {
       if (info.file.status !== 'uploading') {
         console.log(info.file, info.fileList);
@@ -126,9 +200,9 @@ export default function Home() {
       // const result = info.file.raw;
       // const workbook = XLSX.read(result, { type: 'binary' });
       if (info.file.status === 'done') {
-        message.success(`${info.file.name} file uploaded successfully`);
+        message.success(`${info.file.name} 上传成功`);
       } else if (info.file.status === 'error') {
-        message.error(`${info.file.name} file upload failed.`);
+        message.error(`${info.file.name} 上传失败.`);
       }
     },
 
@@ -151,12 +225,34 @@ export default function Home() {
     console.log('选取的图片文件信息', res)
   }
   return (
-    <main className="flex min-h-screen  justify-between p-24">
+    <main className="min-h-screen ">
+      <div  className="flex  justify-between p-24">
+        {console.log('---', form.getFieldsValue('flowerName'))}
         <Upload {...props}>
-        <Button type="primary" icon={<UploadOutlined />}>
-          导入表格
-        </Button>
-      </Upload>
+          <Button type="primary" disabled={!flowerName || !goodsName} icon={<UploadOutlined />}>
+            导入表格
+          </Button>
+          {(!flowerName || !goodsName) && <div>请先输入文件名</div>}
+        </Upload>
+      </div>
+      
+      <Form
+        name="basic"
+        form={form}
+        labelCol={{ span: 8 }}
+        wrapperCol={{ span: 16 }}
+        style={{ maxWidth: 600 }}
+        initialValues={{ remember: true }}
+        autoComplete="off"
+        onValuesChange={filedChange}
+      >
+        <Form.Item label="引花名" name="flowerName">
+          <Input />
+        </Form.Item>
+        <Form.Item label="拣货名" name="goodsName">
+          <Input />
+        </Form.Item>
+      </Form>
     </main>
   );
 }
