@@ -36,9 +36,97 @@ export default function Home() {
     link.click()
     URL.revokeObjectURL(url) // 释放内存
   }
+
+  const getDataFun = async (params) => {
+    axios.get('http://localhost:3001/getData', {
+      params: params,
+      responseType: 'blob',
+      headers: {
+        responseType: 'blob'
+      }
+    })
+    .then(function (response) {
+      console.log(response);
+      if (response.status === 200) {
+        if (response.data.type === 'application/zip') {
+          downFile(response.data, flowerName)
+          
+        }
+      } else {
+        message.error('文件下载失败');
+      }
+      
+    })
+    .catch(function (error) {
+      console.log(error);
+    })
+    .finally(function () {
+      // always executed
+    });
+  }
+
+  const getGoodsData = async (params) => {
+    axios.get('http://localhost:3001/getGoodsData', {
+      params: params,
+      responseType: 'blob',
+      headers: {
+        responseType: 'blob'
+      }
+    })
+    .then(function (response) {
+      console.log(response);
+      if (response.status === 200) {
+        if (response.data.type === 'application/zip') {
+          downFile(response.data, goodsName)
+        }
+      } else {
+        message.error('文件下载失败');
+      }
+      
+    })
+    .catch(function (error) {
+      console.log(error);
+    })
+    .finally(function () {
+      // always executed
+    });
+  }
+
+  const getNoExistData = async (params) => {
+    axios.get('http://localhost:3001/getNoExistData', {
+      params: params,
+      headers: {
+      }
+    })
+    .then(function (response) {
+      console.log(response);
+      if (response.status === 200) {
+        console.log('response.data', response.data.data)
+        const data = Object.keys(response.data.data).join(',')
+        console.log('data', data)
+        if(Object.keys(data).length > 0) {
+          Modal.error({
+            title: '不存在的图片skc有：',
+            content: data
+          })
+        } else {
+          Modal.success({
+            title: '导出成功，文件夹图片完整',
+            content: data
+          })
+        }
+        
+      } else {
+        message.error('文件下载失败');
+      }
+      
+    })
+    .catch(function (error) {
+      console.log(error);
+    })
+  }
    
    // 上传文件并解析成json
-   
    const HandleImportFile = (info) => {
     const files = info.file;
     // 获取文件名称
@@ -103,89 +191,11 @@ export default function Home() {
           console.log('result', Object.keys(result))
           info.onProgress({ percent: 100 }, info.file);
           info.onSuccess(info.res, info.file);
-          axios.get('http://localhost:3001/getData', {
-            params: result,
-            responseType: 'blob',
-            headers: {
-              responseType: 'blob'
-            }
-          })
-          .then(function (response) {
-            console.log(response);
-            if (response.status === 200) {
-              if (response.data.type === 'application/zip') {
-                downFile(response.data, flowerName)
-                
-              }
-            } else {
-              message.error('文件下载失败');
-            }
-            
-          })
-          .catch(function (error) {
-            console.log(error);
-          })
-          .finally(function () {
-            // always executed
-          });
-
-          axios.get('http://localhost:3001/getGoodsData', {
-            params: result,
-            responseType: 'blob',
-            headers: {
-              responseType: 'blob'
-            }
-          })
-          .then(function (response) {
-            console.log(response);
-            if (response.status === 200) {
-              if (response.data.type === 'application/zip') {
-                downFile(response.data, goodsName)
-              }
-            } else {
-              message.error('文件下载失败');
-            }
-            
-          })
-          .catch(function (error) {
-            console.log(error);
-          })
-          .finally(function () {
-            // always executed
-          });
-
-
-          axios.get('http://localhost:3001/getNoExistData', {
-            params: result,
-            headers: {
-            }
-          })
-          .then(function (response) {
-            console.log(response);
-            if (response.status === 200) {
-              console.log('response.data', response.data.data)
-              const data = Object.keys(response.data.data).join(',')
-              console.log('data', data)
-              if(Object.keys(data).length > 0) {
-                Modal.error({
-                  title: '不存在的图片skc有：',
-                  content: data
-                })
-              } else {
-                Modal.success({
-                  title: '导出成功，文件夹图片完整',
-                  content: data
-                })
-              }
-              
-            } else {
-              message.error('文件下载失败');
-            }
-            
-          })
-          .catch(function (error) {
-            console.log(error);
-          })
+          
+          getDataFun(result)
+          getGoodsData(result)
+          getNoExistData(result)
+          
         }
       } catch (e) {
         console.error('e', e)
