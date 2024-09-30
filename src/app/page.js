@@ -166,10 +166,18 @@ export default function Home() {
               console.log('response.data', response.data.data)
               const data = Object.keys(response.data.data).join(',')
               console.log('data', data)
-              Modal.info({
-                title: '不存在的图片skc有：',
-                content: data
-              })
+              if(Object.keys(data).length > 0) {
+                Modal.error({
+                  title: '不存在的图片skc有：',
+                  content: data
+                })
+              } else {
+                Modal.success({
+                  title: '导出成功，文件夹图片完整',
+                  content: data
+                })
+              }
+              
             } else {
               message.error('文件下载失败');
             }
