@@ -1,15 +1,18 @@
 'use client';
 import { useState } from 'react';
 import Image from "next/image";
-import { Upload, Button, message, Modal, Form, Input } from 'antd';
+import { Upload, Button, message, Modal, Form, Input, ConfigProvider, Spin } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import axios from 'axios'
+import './page.css'
 
 export default function Home() {
   const [form] = Form.useForm();
   const [flowerName, setFlowerName] = useState('');
   const [goodsName, setGoodsName] = useState('');
+  const [paramsResult, setParamsResult] = useState({});
+  const [spinning, setSpinning] = useState(false)
   
   const filedChange = (changedValues, allValues) => {
     const { flowerName, goodsName } = allValues;
@@ -38,6 +41,12 @@ export default function Home() {
   }
 
   const getDataFun = async (params) => {
+    console.log(params);
+    if (Object.keys(params).length === 0) {
+      message.error('请先导入表格');
+      return;
+    }
+    setSpinning(true)
     axios.get('http://localhost:3001/getData', {
       params: params,
       responseType: 'blob',
@@ -61,11 +70,12 @@ export default function Home() {
       console.log(error);
     })
     .finally(function () {
-      // always executed
+      setSpinning(false)
     });
   }
 
   const getGoodsData = async (params) => {
+    setSpinning(true)
     axios.get('http://localhost:3001/getGoodsData', {
       params: params,
       responseType: 'blob',
@@ -88,7 +98,7 @@ export default function Home() {
       console.log(error);
     })
     .finally(function () {
-      // always executed
+      setSpinning(false)
     });
   }
 
@@ -191,9 +201,10 @@ export default function Home() {
           console.log('result', Object.keys(result))
           info.onProgress({ percent: 100 }, info.file);
           info.onSuccess(info.res, info.file);
+          setParamsResult(result)
           
-          getDataFun(result)
-          getGoodsData(result)
+          // getDataFun(result)
+          // getGoodsData(result)
           getNoExistData(result)
           
         }
@@ -242,35 +253,63 @@ export default function Home() {
     })
     console.log('选取的图片文件信息', res)
   }
+  const buildFlowerImageFile = () => {
+    getDataFun(paramsResult)
+  }
+  const buildGoodsImageFile = () => {
+    getGoodsData(paramsResult)
+  }
   return (
-    <main className="min-h-screen ">
-      <div  className="flex  justify-between p-24">
-        {console.log('---', form.getFieldsValue('flowerName'))}
-        <Upload {...props}>
-          <Button type="primary" disabled={!flowerName || !goodsName} icon={<UploadOutlined />}>
-            导入表格
-          </Button>
-          {(!flowerName || !goodsName) && <div>请先输入文件名</div>}
-        </Upload>
-      </div>
-      
-      <Form
-        name="basic"
-        form={form}
-        labelCol={{ span: 8 }}
-        wrapperCol={{ span: 16 }}
-        style={{ maxWidth: 600 }}
-        initialValues={{ remember: true }}
-        autoComplete="off"
-        onValuesChange={filedChange}
-      >
-        <Form.Item label="引花名" name="flowerName">
-          <Input />
-        </Form.Item>
-        <Form.Item label="拣货名" name="goodsName">
-          <Input />
-        </Form.Item>
-      </Form>
-    </main>
+    <ConfigProvider
+      theme={{
+        token: {
+          // Seed Token，影响范围大
+          colorPrimary: '#00b96b',
+          borderRadius: 2,
+
+          // 派生变量，影响范围小
+          colorBgContainer: '#f6ffed',
+        },
+      }}  
+    >
+      <main className="min-h-screen ">
+        <div  className="flex  justify-between p-24">
+          <Upload {...props}>
+            <Button type="primary"  icon={<UploadOutlined />}>
+              导入表格
+            </Button>
+            <div>
+              <p>1、上传表格</p>
+              <p>2、输入相应印花名或者拣货名，点击相应按钮生成文件夹</p>
+            </div>
+          </Upload>
+        </div>
+        
+        
+        <Form
+          name="basic"
+          form={form}
+          labelCol={{ span: 8 }}
+          wrapperCol={{ span: 16 }}
+          style={{ maxWidth: 600 }}
+          initialValues={{ remember: true }}
+          autoComplete="off"
+          onValuesChange={filedChange}
+        >
+          <Form.Item label="引花名" name="flowerName">
+            <Input />
+          </Form.Item>
+          <Form.Item label="拣货名" name="goodsName">
+            <Input />
+          </Form.Item>
+          
+        </Form>
+        <div className="btnCon">
+          <Button onClick={buildFlowerImageFile} disabled={!flowerName}>生成印花文件</Button>
+          <Button onClick={buildGoodsImageFile} disabled={!goodsName} className="ml-20">生成拣货文件</Button>
+        </div>
+        <Spin spinning={spinning}  fullscreen tip="生成中..." />
+      </main>
+    </ConfigProvider>
   );
 }
