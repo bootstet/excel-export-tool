@@ -10,6 +10,7 @@ import './page.css'
 export default function Home() {
   const [form] = Form.useForm();
   const [flowerName, setFlowerName] = useState('');
+  const [flowerNameByZu, setFlowerNameByZu] = useState('');
   const [goodsName, setGoodsName] = useState('');
   const [paramsResult, setParamsResult] = useState({});
   const [spinning, setSpinning] = useState(false)
@@ -18,6 +19,7 @@ export default function Home() {
     const { flowerName, goodsName } = allValues;
     setFlowerName(flowerName);
     setGoodsName(goodsName);
+    setFlowerNameByZu(flowerNameByZu);
   }
   
   // 获取SKC值
@@ -48,6 +50,40 @@ export default function Home() {
     }
     setSpinning(true)
     axios.get('http://localhost:3001/getData', {
+      params: params,
+      responseType: 'blob',
+      headers: {
+        responseType: 'blob'
+      }
+    })
+    .then(function (response) {
+      console.log(response);
+      if (response.status === 200) {
+        if (response.data.type === 'application/zip') {
+          downFile(response.data, flowerName)
+          
+        }
+      } else {
+        message.error('文件下载失败');
+      }
+      
+    })
+    .catch(function (error) {
+      console.log(error);
+    })
+    .finally(function () {
+      setSpinning(false)
+    });
+  }
+
+  const getAllData = async (params) => {
+    console.log(params);
+    if (Object.keys(params).length === 0) {
+      message.error('请先导入表格');
+      return;
+    }
+    setSpinning(true)
+    axios.get('http://localhost:3001/getFootGoodsData', {
       params: params,
       responseType: 'blob',
       headers: {
@@ -254,11 +290,17 @@ export default function Home() {
     console.log('选取的图片文件信息', res)
   }
   const buildFlowerImageFile = () => {
-    getDataFun(paramsResult)
+    getAllData(paramsResult)
   }
   const buildGoodsImageFile = () => {
     getGoodsData(paramsResult)
   }
+
+  const buildFlowerImageFileByZu = () => {
+    getDataFun(paramsResult)
+  }
+
+  
   return (
     <ConfigProvider
       theme={{
@@ -296,9 +338,11 @@ export default function Home() {
           autoComplete="off"
           onValuesChange={filedChange}
         >
+
           <Form.Item label="引花名" name="flowerName">
             <Input />
           </Form.Item>
+
           <Form.Item label="拣货名" name="goodsName">
             <Input />
           </Form.Item>
@@ -306,6 +350,7 @@ export default function Home() {
         </Form>
         <div className="btnCon">
           <Button onClick={buildFlowerImageFile} disabled={!flowerName}>生成印花文件</Button>
+          <Button onClick={buildFlowerImageFileByZu} disabled={!flowerName} className="ml-20">生成印花文件(脚哥专用)</Button>
           <Button onClick={buildGoodsImageFile} disabled={!goodsName} className="ml-20">生成拣货文件</Button>
         </div>
         <Spin spinning={spinning}  fullscreen tip="生成中..." />
